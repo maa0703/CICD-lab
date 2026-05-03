@@ -1,0 +1,62 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ──────────────────────────────────────────────────────
+  # JOB 1 — Tests
+  # Tourne sur les serveurs de GitHub (cloud)
+  # ──────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: 2. Installer Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 3. Installer les dépendances
+        run: pip install -r app/requirements.txt
+        # on précise app/ ici car le contexte c'est la racine du repo
+        # pas le dossier app/
+
+      - name: 4. Lancer les tests
+        run: pytest tests/ -v
+
+
+  # ──────────────────────────────────────────────────────
+  # JOB 2 — Déploiement
+  # Tourne sur TA VM VirtualBox (self-hosted runner)
+  # ──────────────────────────────────────────────────────
+  deploy:
+    runs-on: self-hosted
+    needs: test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 1. Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: 2. Arrêter l'ancienne version
+        run: docker compose down || true
+        # "|| true" = ne pas échouer si aucun conteneur ne tournait
+
+      - name: 3. Build et lancer la nouvelle version
+        run: |
+          docker compose build --no-cache
+          docker compose up -d
+
+      - name: 4. Vérifier que l'app répond
+        run: |
+          sleep 5
+          curl -f http://localhost/health
+          echo "✅ Déploiement réussi !"
