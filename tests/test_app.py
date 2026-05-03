@@ -17,7 +17,7 @@ def client():
 def test_home(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert b"Hello CI/CD" in r.data
+    assert b"Hello CI/CD, this is my first CI-CD" in r.data
 
 def test_health(client):
     r = client.get("/health")
